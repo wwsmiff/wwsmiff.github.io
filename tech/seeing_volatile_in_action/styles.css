@@ -7,7 +7,13 @@ ul {
 #title {
 	margin-top: 3vh;
 	/*color: var(--title);*/
-	text-align: left;
+	text-align: center;
+	display: flex;
+}
+
+#home {
+	margin-left: 1vw;
+	margin-top: 0.3vh;
 }
 
 #subtitle {

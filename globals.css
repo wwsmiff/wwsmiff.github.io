@@ -13,8 +13,9 @@
 
 body {
 	justify-content: center;
-	width: 50vw;
-	margin-left: 25vw;
+	width: clamp(50vw, 50vw, 90vw);
+	margin-left: clamp(3vw, 25vw, 25vw);
+	margin-right: clamp(0vw, 3vw, 3vw);
 	margin-bottom: 3vh;
 }
 
