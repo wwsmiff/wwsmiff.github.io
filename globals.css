@@ -13,18 +13,22 @@
 
 body {
 	justify-content: center;
-	width: clamp(50vw, 50vw, 90vw);
-	margin-left: clamp(3vw, 25vw, 25vw);
-	margin-right: clamp(0vw, 3vw, 3vw);
-	margin-bottom: 3vh;
+	width: 90vw;
+	margin: 3vw auto;
+}
+
+@media (min-width: 768px) {
+	 body {
+		width: 50vw;
+	}
 }
 
 a:link {
-	color: var(--link);
+	color: var(--links);
 }
 
 a:visited {
-	color: var(--link-visited);
+	color: var(--links-visited);
 }
 
 code {
