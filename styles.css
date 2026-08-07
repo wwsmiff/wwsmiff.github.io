@@ -18,5 +18,11 @@
 
 #tech-articles {
 	text-align: left;
-	margin-left: 1vw;
+	padding-left: 3.5vw;
+}
+
+@media(min-width: 768px) {
+	#tech-articles {
+		padding-left: 1vw;
+	}
 }
