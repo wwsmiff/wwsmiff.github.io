@@ -42,6 +42,16 @@ ul {
 	tab-size: 2;
 }
 
+#codeblock pre {
+	margin: 0;
+	padding: 0;
+}
+
+#codeblock code {
+	margin: 0;
+	padding: 0;
+}
+
 #content ul {
 	padding-left: 4vw;
 }
