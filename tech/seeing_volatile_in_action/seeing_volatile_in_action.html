@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+		<link rel="stylesheet" href="styles.css">
+		<link rel="stylesheet" href="../../globals.css">
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+</head>
+<body>
+	<div id="title">
+		<h3>Seeing <code>volatile</code> in action</h3>
+	</div>
+
+	<div id="subtitle">
+		Introduction
+	</div>
+	<div id="content">
+		I had the fortune of working at a small company which worked with medical devices during my summer internship which was right up my alley due to my immense interest in firmware engineering and embedded systems. I had a great colleague who was already working there and I got to work hands-on on a couple of major issues. One of them was very interesting and I think it warrants a story which will be covered here. To keep the background short, we were working to eliminate BLE packet loss and after quite some research and experimentation, my colleague suggested that we look into upgrading our SDK to the latest one supported by the chipset we were working with, which introduced BLE 4.2, which in turn allowed us to use this feature called <a href="https://software-dl.ti.com/lprf/simplelink_cc2640r2_latest/docs/blestack/ble_user_guide/html/ble-stack-3.x/data-length-extensions.html">Data Length Extension</a> which allowed us to extend our Protocol Data Unit (PDU) size from 27 bytes to 251 bytes. The reasoning behind this will be covered some other time!
+	</div>
+
+	<div id="subtitle">
+		Migrating to <a href="https://www.ti.com/tool/download/BLE-STACK-2-X/2.02.08.12">the newer SDK</a>
+	</div>
+	<div id="content">
+		The first approach we tried was to simply replace the necessary header files and just get it to compile without any errors and directly flash it onto the board to see if it worked. As expected, this did not work, but it was just a shot into the void with a miniscule chance of working. The newer SDK was released around 8 years after the SDK we were currently using, so expecting it to work is like believing in magic. So we took the next sensible step, took an example from the latest SDK which was similar to our firmware, and got around to porting it part by part keeping in track what changes were made and ensuring it compiled at each step. And we got it to a point where the connection and disconnection behavior was the same as the other devices with the older SDK. <i>Or so we thought!</i>. There was a very strange issue we encountered. The disconnect functionality did not work as expected using the actual button on the device which was supposed to trigger it, and neither did the buzzer work (but this was a different issue altogether). The disconnect functionality basically relied on a global boolean variable called <code>disconnect</code>. Very horrible coding standards, yes. But this simple approach was enough for our use case. Time to dig deeper.
+	</div>
+
+	<div id="subtitle">
+		Some background
+	</div>
+	<div id="content">
+		To understand the issue better we need to understand a few things:
+		<ul>
+			<li>RTOS and concurrency</li>
+			<li>Compiler optimizations</li>
+			<li>CPU Caching and memory</li>
+			<li>C</li>
+		</ul>
+	</div>
+
+	<div id="subtitle">
+		RTOS and concurrency
+	</div>
+	<div id="content">
+		Compared to general purpose operating system, RTOS (Real Time Operating System) operates very differently. It is very minimal and much simpler compared to consumer oriented operating systems like Linux. But RTOS reigns supreme in the world of embedded systems because its point isn't to provide extensive security and a lot of features but to provide a very thin layer above the hardware so that the firmware engineer working with a board does not need to implement basic things like schedulers, delay loops, synchronization primitives, etc. But one of the most important features of an RTOS is <a href="https://en.wikipedia.org/wiki/Scheduling_(computing)">scheduling</a>. In fact there are classifications of RTOSes based on how they schedule tasks and what kind of time constraints they operate under. To keep it simple, RTOSes on single core processors employ concurrency in order to give the illusion of many tasks running at the same time instead of true parallelism where different hardware cores handle different tasks. This is done by rapidly switching through multiple tasks, (horrible visualization given below).
+	</div>
+	<div id="cvp-image">
+		<img src="images/cvp.jpg" width=500vw height=300vh></img>
+	</div>
+	<div id="content"> 
+		RTOS provides the ability to create "tasks" which are basically independent threads which run concurrently whose entry point is a function. Typically every "task" has some initialization code and a <code>while(1) {...}</code> loop to keep executing the required functionality and the scheduler constantly jumps between these two tasks to give a sense of concurrent execution.
+	</div>
+	<div id="subtitle">
+		Compiler optimizations
+	</div>
+	<div id="content">
+		Modern compilers make tons of optimizations in order to make well written and readable code as fast as possible so that programmers do not need to resort to weird <a href="https://en.wikipedia.org/wiki/Fast_inverse_square_root">black magic</a> to write performant code. This is partially true though because there are still some cases where hand-rolled assembly, specific bitwise operations instead of arithmetic operations, etc. are still required but for most cases, compiler optimizations are very powerful. A very common optimization is called <a href="https://en.wikipedia.org/wiki/Dead-code_elimination">Dead code elimination</a>. If the compiler encounters something like <code>if(0) {...}</code> or <code>while(0) {...}</code>, it automatically removes the relevant assembly from the generated assembly because your code will basically never enter that block.
+	</div>
+	<div id="subtitle">CPU caching and memory</div>
+	<div id="content">
+		In modern systems, computers have a CPU, some RAM (memory), and some ROM (storage) and a lot of other peripherals. Typically for most programs, files are read from ROM into RAM and other variables that are defined within the program (stack or heap) are loaded from the RAM into the CPU cache and then into the CPU register. The CPU has very basic memory units called registers which is where data is stored before performing arithmetic, bitwise and other operations on the data. So obviously, the latency between fetching variables from RAM, loading it to the cache and then performining some operation on it is much higher than performing operations on variables that are already present in the cache or registers. The access speed goes like this: ROM -> RAM -> CPU cache -> CPU register, but the actual difference in time is several orders of magnitude faster/slower. So obviously, the compiler prefers to pre-load variables into the register and use those as much as possible instead of fresh memory accesses every single time.
+	</div>
+
+	<div id="subtitle">C</div>
+	<div id="content">
+		The C programming language is truly remarkable given its simplicity and focus on just providing the bare minimum needed to incorporate basic english vocabulary when writing computer programs compared to modern languages which focus on memory-safety, ease of use, etc. This is also one of the reasons it is still the go-to language for embedded systems because the grammar of the language is so simple that writing a compiler for a custom platform has been done many times before and is well documented and there are entire tools for this, and since there are also practically very few abstractions, C is extremely fast and performant due to being able to produce binaries with very little overhead, which is perfect for environments which dont have a lot of processing power to be spent on more modern features. Keeping this in mind C just provides essential keywords for how variables should be treated and stored, like <code>static</code>, <code>const</code>, and here comes our point of interest, <code><b>volatile</b></code>.
+	</div>
+
+	<div id="subtitle">Where it all comes together</div>
+	<div id="content">
+		Given all the above context must've given you an idea of where this is all going. So coming back to the problem at hand with the device not disconnecting as needed, the code was layed out like this:
+		<div id="codeblock">
+			<pre><code>// includes
+bool disconnect = 0;
+void task1(...) {
+	...
+	while (1) {
+		...
+		if (disconnect) {
+			// do the actual disconnecting stuff
+		}
+		...
+	}
+}
+
+void task2(...) {
+	...
+	while (1) {
+		...
+	}
+	...
+}</code></pre>
+		</div>
+		so in <code>task1()</code> the <code> if (disconnect) { ... } </code> seemed to have absolutely no effect. We ran it through the debugger and it did not even seem to step into the <code>if</code> block even though disconnect should technically have been <code>true</code> at that point of execution. We even looked at the disassembly and tracked the instruction pointer to see how the branching occured because the disassembly had the branch but it never actually branched! But for some reason it worked when we intentionally introduced a similar statement in <code>task2()</code>. It took quite some time to figure out what was even going on. and then it struck me! All the random videos I've seen on youtube and articles I've read about the glorious keyword: <code>volatile</code>. Making <code>disconnect</code> as a <code>volatile</code> variable somehow just worked magically. And thats when I understood the situation and what could have possibly happened, and this is kind of when all the content I'd come across about <code>volatile</code> made so much sense to me, because before this I never got to use it in a meaningful way because most of my code never encountered issues like this.
+	</div>
+
+	<div id="subtitle">Understanding volatile!</div>
+	<div id="content">
+		And finally we circle back to repeating the same mistake I've seen before, writing yet another post about <code>volatile</code> but this time it is different. I only understood the existence of this keyword when I personally had an issue tied to optimizations and caching and how <code>volatile</code> helps to avoid these kinds of scenarios. So essentially, <code>volatile</code> instructs the compiler to never perform any kind of optimizations related to memory accesses on a variable with this keyword attached to it and basically keeps the compiler alert to the accesses of this variable by signifying that there can be unexpected changes to this variable so the compiler must make no assumptions about the value of the variable and must always access memory directly to get the value of this variable regardless of whether this variable is in a register or not. So we finally concluded from our debugging sessions and some thinking that what most likely happened was the compiler just assumed that <code>disconnect</code> could not change inside the <code>while (1)</code> because there is nothing actively modifying <code>disconnect</code> there, and had it stored in a register outside the loop and only bothered to access the same version which was not updated to the actual in-memory value of <code>disconnect</code> and caused the branch to never execute because it was repeatedly reading the old value which was <code>false</code>.</div>
+
+	<div id="subtitle">Conclusions</div>
+	<div id="content">
+		The intersection of all the topics I'd learnt but never got to practically use was actually just beautiful, because it combined topics from operating systems, computer architecture, compiler design and C. Its always great when you use some <i>forbidden knowledge</i> you've been hoarding for some time without using it and it suddenly comes in handy to fix an issue. One instance that allowed me to combine all these topics to narrow down the issue! Of course, there's always the fact that I can probably spot something like this happening much faster the next time it happens simply due to the experience of already solving it once, but it still felt great nonetheless. And of course finally after some research, its never a good idea to rely on <code>volatile</code> to manage problems like this which typically occurs due to globals being shared by concurrent or parallel tasks. Always prefer using proper synchronization primitives instead of fixes like <code>volatile</code> which isn't really a good fix in the first place, but again the use case here was very simple. It also taught me to always have a mental model of how everything is viewed by the compiler, the operating system and that what happens during runtime isn't always mapped out directly to the code you've written, or to put it simply, as a programmer it was easy for me to just assume that nothing could go wrong with <code>disconnect</code> in this case because its just two tasks that are running through RTOS and they're sharing a variable but for the compiler, both the "tasks" are just functions isolated from each other (because one does not depend on the other in our codebase) and all it sees, is the current execution path and not the full execution of variables and functions.
+	</div>
+</body>
+</html>

@@ -1,0 +1,37 @@
+@import "../../globals.css";
+
+ul {
+	margin-left: 2vw;
+}
+
+#title {
+	margin-top: 3vh;
+	/*color: var(--title);*/
+	text-align: left;
+}
+
+#subtitle {
+	margin-top: 3vh;
+	color: var(--title);
+	text-align: left;
+}
+
+#content {
+	margin-top: 1vh;
+}
+
+#cvp-image {
+	margin-top: 2vh;
+	display: flex;
+	justify-content: center;
+}
+
+#codeblock {
+	margin-top: 2vh;
+	margin-bottom: 2vh;
+	background: var(--code-bg);
+	padding-top: 1vh;
+	padding-bottom: 1vh;
+	padding-left: 1vw;
+	tab-size: 2;
+}

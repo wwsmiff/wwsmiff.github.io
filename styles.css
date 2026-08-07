@@ -1,9 +1,22 @@
-* {
-	margin: 0;
-	padding: 0;
+@import "./colors.css";
+
+#navbar {
+	margin-top: 1vh;
+	text-align: center;
 }
 
-body {
-	justify-content: center;
-	text-align: center;
+#introduction {
+	margin-top: 3vh;
+	text-align: left;
+}
+
+#tech-title {
+	margin-top: 3vh;
+	text-align: left;
+	color: var(--title);
+}
+
+#tech-articles {
+	text-align: left;
+	margin-left: 1vw;
 }
